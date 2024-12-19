@@ -1,5 +1,4 @@
 window.WAF_API_KEY = ""
-window.WAF_API_URL = ""
 
 
 const form = document.getElementById("numberForm");
@@ -23,11 +22,10 @@ const form = document.getElementById("numberForm");
             });
         }
 
-        async function fetchWithCaptchaHandling(url, index, n) {
-            if (n >= 100 && !isCaptchaSolved) {
-                output.innerHTML += `<div>${index}. Waiting for CAPTCHA...</div>`;
+        async function fetchWithCaptchaHandling(url, index) {
+            if (!isCaptchaSolved) {
                 return new Promise((resolve) => {
-                    showCaptcha(() => resolve(fetchWithCaptchaHandling(url, index, n)));
+                    showCaptcha(() => resolve(fetchWithCaptchaHandling(url, index)));
                 });
             }
 
@@ -39,7 +37,7 @@ const form = document.getElementById("numberForm");
 
             if (response.status === 403) {
                 isCaptchaSolved = false;
-                return fetchWithCaptchaHandling(url, index, n);
+                return fetchWithCaptchaHandling(url, index);
             }
 
             return response;
@@ -48,9 +46,8 @@ const form = document.getElementById("numberForm");
         async function startSequence(n) {
             output.innerHTML = "";
             for (let i = 1; i <= n; i++) {
-                output.innerHTML += `<div>${i}. Sending request...</div>`;
                 try {
-                    const response = await fetchWithCaptchaHandling("https://api.prod.jcloudify.com/whoami", i, n);
+                    const response = await fetchWithCaptchaHandling("https://api.prod.jcloudify.com/whoami", i);
                     if (response.status === 405) {
                         output.innerHTML += `<div>${i}. Forbidden</div>`;
                     } else {
