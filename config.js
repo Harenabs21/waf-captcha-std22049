@@ -1,4 +1,4 @@
-window.WAF_API_KEY = ""
+window.WAF_API_KEY 
 
 
 const form = document.getElementById("numberForm");
