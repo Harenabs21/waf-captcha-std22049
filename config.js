@@ -1,4 +1,4 @@
-window.WAF_API_KEY 
+const apiKey = window.WAF_API_KEY 
 
 
 const form = document.getElementById("numberForm");
@@ -11,7 +11,7 @@ const form = document.getElementById("numberForm");
 
         function showCaptcha(onSuccessCallback) {
             AwsWafCaptcha.renderCaptcha(captchaContainer, {
-                apiKey: window.WAF_API_KEY,
+                apiKey: apiKey,
                 onSuccess: (token) => {
                     wafToken = token;
                     isCaptchaSolved = true;
@@ -29,35 +29,33 @@ const form = document.getElementById("numberForm");
                     showCaptcha(() => resolve(fetchWithCaptchaHandling(url, index)));
                 });
             }
-
-            const response = await fetch(url, {
-                headers: {
-                    "x-aws-waf-token": wafToken || "",
-                },
-            });
-
-            if (response.status === 405) {
-                isCaptchaSolved = false;
-                return fetchWithCaptchaHandling(url, index);
+        
+            try {
+                const response = await fetch(url, {
+                    headers: {
+                        "x-aws-waf-token": wafToken || "",
+                    },
+                });
+        
+                if (response.status === 403) {
+                    throw new Error('Forbidden');
+                } else if (response.status === 405) {
+                    throw new Error('CAPTCHA required');
+                }
+        
+                return response;
+            } catch (error) {
+                console.error(`Error fetching ${url}:`, error.message);
+                throw error;
             }
-
-            return response;
         }
-
+        
         async function startSequence(n) {
             output.innerHTML = "";
             for (let i = currentIndex + 1; i <= n; i++) {
                 try {
                     const response = await fetchWithCaptchaHandling("https://api.prod.jcloudify.com/whoami", i);
-                    if (response.status === 403) {
-                        output.innerHTML += `<div>${i}. Forbidden</div>`;
-                    } else if (response.status === 405) {
-                        currentIndex = i - 1; // Stop the sequence at the CAPTCHA
-                        showCaptcha(() => startSequence(n)); // Resume after solving CAPTCHA
-                        break;
-                    } else {
-                        output.innerHTML += `<div>${i}. Error: ${response.status}</div>`;
-                    }
+                    output.innerHTML += `<div>${i}. Forbidden</div>`;
                 } catch (error) {
                     output.innerHTML += `<div>${i}. Error: ${error.message}</div>`;
                 }
