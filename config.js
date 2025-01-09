@@ -7,6 +7,7 @@ const form = document.getElementById("numberForm");
         const captchaContainer = document.getElementById("my-captcha-container");
         let wafToken = null;
         let isCaptchaSolved = false;
+        let currentIndex = 0;
 
         function showCaptcha(onSuccessCallback) {
             AwsWafCaptcha.renderCaptcha(captchaContainer, {
@@ -35,7 +36,7 @@ const form = document.getElementById("numberForm");
                 },
             });
 
-            if (response.status === 403) {
+            if (response.status === 405) {
                 isCaptchaSolved = false;
                 return fetchWithCaptchaHandling(url, index);
             }
@@ -45,11 +46,15 @@ const form = document.getElementById("numberForm");
 
         async function startSequence(n) {
             output.innerHTML = "";
-            for (let i = 1; i <= n; i++) {
+            for (let i = currentIndex + 1; i <= n; i++) {
                 try {
                     const response = await fetchWithCaptchaHandling("https://api.prod.jcloudify.com/whoami", i);
-                    if (response.status === 405) {
+                    if (response.status === 403) {
                         output.innerHTML += `<div>${i}. Forbidden</div>`;
+                    } else if (response.status === 405) {
+                        currentIndex = i - 1; // Stop the sequence at the CAPTCHA
+                        showCaptcha(() => startSequence(n)); // Resume after solving CAPTCHA
+                        break;
                     } else {
                         output.innerHTML += `<div>${i}. Error: ${response.status}</div>`;
                     }
@@ -60,23 +65,6 @@ const form = document.getElementById("numberForm");
             }
         }
 
-        async function startSequence(n) {
-            output.innerHTML = "";
-            for (let i = 1; i <= n; i++) {
-                output.innerHTML += `<div>${i}. Sending request...</div>`;
-                try {
-                    const response = await fetchWithCaptchaHandling("https://api.prod.jcloudify.com/whoami", i);
-                    if (response.status === 405) {
-                        output.innerHTML += `<div>${i}. Forbidden</div>`;
-                    } else {
-                        output.innerHTML += `<div>${i}. Error: ${response.status}</div>`;
-                    }
-                } catch (error) {
-                    output.innerHTML += `<div>${i}. Error: ${error.message}</div>`;
-                }
-                await new Promise((resolve) => setTimeout(resolve, 1000)); // 1-second delay
-            }
-        }
 
         form.addEventListener("submit", (event) => {
             event.preventDefault();
